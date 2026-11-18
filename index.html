@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Chalk</title>
+<meta name="theme-color" content="#111214">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Chalk">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+
+<section class="view" id="v-journal">
+  <div class="top">
+    <div class="brand"><i></i>Chalk</div>
+    <a class="iconbtn" href="#profil" aria-label="Profil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></a>
+  </div>
+  <div id="demoBanner"></div>
+  <h1 id="weekTitle">Cette semaine</h1>
+  <div class="week" id="week"></div>
+  <div class="legend" style="margin-bottom:16px"><span><i style="--c:var(--cf)"></i>CrossFit</span><span><i style="--c:var(--mu)"></i>Muscu</span><span><i style="--c:var(--mx)"></i>Mixte</span><span><i style="--c:var(--run)"></i>Course</span></div>
+  <div class="figs" id="weekFigs"></div>
+  <h2>Séances</h2>
+  <div class="list" id="sessList"></div>
+</section>
+
+<section class="view" id="v-seance">
+  <div class="top"><h1 id="formTitle">Nouvelle séance</h1></div>
+  <div class="seg" id="typeSeg" role="group" aria-label="Type de séance">
+    <button type="button" data-t="crossfit">CrossFit</button><button type="button" data-t="muscu">Muscu</button><button type="button" data-t="mixte">Mixte</button><button type="button" data-t="course">Course</button>
+  </div>
+  <div class="fields" style="margin-top:14px">
+    <label class="f">Date<input type="date" id="fDate"></label>
+    <label class="f" id="durWrap">Durée (min)<input type="number" id="fDur" inputmode="numeric" min="1" max="400" placeholder="60"></label>
+  </div>
+
+  <div id="trainBox" class="sec">
+    <h3>Ta séance</h3>
+    <textarea id="fText" placeholder="Back squat 5x5 à 60kg&#10;AMRAP 12 min : 10 wall balls 6kg, 10 burpees&#10;Fini par 3x12 hip thrust 80kg" autocomplete="off" autocapitalize="sentences"></textarea>
+    <div class="chips" id="suggest" aria-label="Suggestions d'exercices"></div>
+    <div class="card preview" id="preview"></div>
+  </div>
+
+  <div id="runBox" class="sec" hidden>
+    <h3>Ta sortie</h3>
+    <div class="fields">
+      <label class="f">Distance (km)<input type="number" id="rKm" inputmode="decimal" step="0.01" min="0" placeholder="8.5"></label>
+      <label class="f">Temps<input type="text" id="rTime" inputmode="numeric" placeholder="48:30 ou 1:02:10"></label>
+      <label class="f">Type<select id="rKind"><option>Footing</option><option>Fractionné</option><option>Sortie longue</option><option>Tempo</option><option>Trail</option><option>Course</option></select></label>
+      <label class="f">D+ (m)<input type="number" id="rDplus" inputmode="numeric" min="0" placeholder="0"></label>
+    </div>
+    <div class="figs" id="runLive" style="margin-top:12px"></div>
+    <label class="f" style="margin-top:12px">Détails (facultatif)<textarea id="rText" style="min-height:90px" placeholder="10x400m récup 1min30, jambes lourdes sur la fin"></textarea></label>
+  </div>
+
+  <div class="grid2 sec">
+    <div class="card"><h3 style="margin-bottom:6px">Avant la séance</h3><div class="sliders" id="slBefore"></div></div>
+    <div class="card"><h3 style="margin-bottom:6px">Après la séance</h3><div class="sliders" id="slAfter"></div></div>
+  </div>
+  <div class="savebar"><span><b id="liveKcal">– kcal</b> <span class="small" id="liveMus"></span></span><button class="btn" id="saveBtn" type="button">Enregistrer</button></div>
+</section>
+
+<section class="view" id="v-progres">
+  <div class="top"><h1>Progrès</h1></div>
+  <div class="seg" id="progSeg" role="group" aria-label="Type de progrès">
+    <button type="button" data-p="force">Force</button><button type="button" data-p="course">Course</button><button type="button" data-p="ressenti">Ressenti</button><button type="button" data-p="regul">Régularité</button>
+  </div>
+  <div id="progBody" class="sec"></div>
+</section>
+
+<section class="view" id="v-corps">
+  <div class="top"><h1 id="bodyTitle">Muscles travaillés</h1></div>
+  <div class="seg" id="bodySeg" role="group" aria-label="Période">
+    <button type="button" data-b="last">Dernière séance</button><button type="button" data-b="7">7 jours</button><button type="button" data-b="30">30 jours</button><button type="button" data-b="all">Tout</button>
+  </div>
+  <div class="grid2 sec">
+    <div>
+      <div class="body3d" id="body3d"><div class="tip" id="bodyTip"></div><div class="hint">Glisse pour tourner</div><div class="side"><button class="btn sm" type="button" data-face="face">Face</button><button class="btn sm" type="button" data-face="dos">Dos</button></div></div>
+      <div class="heatkey"><span>Pas travaillé</span><i></i><span>Beaucoup</span></div>
+    </div>
+    <div>
+      <p class="muted small" id="bodyNote"></p>
+      <div class="bars" id="bodyBars"></div>
+      <div id="bodyLow" class="sec"></div>
+    </div>
+  </div>
+</section>
+
+<section class="view" id="v-exos">
+  <div class="top"><h1>Exercices</h1><button class="btn sm" id="addExo" type="button">Ajouter</button></div>
+  <input type="search" id="exSearch" placeholder="Chercher un exercice" aria-label="Chercher un exercice">
+  <div class="chips" id="exCats"></div>
+  <div class="exgrid sec" id="exGrid"></div>
+</section>
+
+<section class="view" id="v-profil">
+  <div class="top"><h1>Profil</h1></div>
+  <div class="grid2">
+    <div class="card">
+      <h3 style="margin-bottom:12px">Pour le calcul des calories</h3>
+      <div class="seg" id="sexSeg" role="group" aria-label="Sexe" style="margin-bottom:12px"><button type="button" data-s="F">Femme</button><button type="button" data-s="H">Homme</button></div>
+      <div class="fields">
+        <label class="f">Âge<input type="number" id="pAge" inputmode="numeric" min="10" max="99"></label>
+        <label class="f">Poids (kg)<input type="number" id="pWeight" inputmode="decimal" step="0.1" min="30" max="200"></label>
+        <label class="f">Taille (cm)<input type="number" id="pHeight" inputmode="numeric" min="120" max="220"></label>
+      </div>
+      <p class="muted small" id="bmrNote" style="margin-top:12px"></p>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:8px">Sauvegarde</h3>
+      <p class="muted small">Tes données restent sur ce téléphone. Exporte une sauvegarde de temps en temps pour ne rien perdre, ou pour les passer sur un autre appareil.</p>
+      <div class="row" style="margin-top:12px"><button class="btn pri" id="expBtn" type="button">Exporter</button><label class="btn" for="impFile" style="display:inline-flex;align-items:center">Importer</label><input type="file" id="impFile" accept="application/json,.json" hidden></div>
+      <div class="row" style="margin-top:12px"><button class="btn ghost" id="resetBtn" type="button">Tout effacer</button></div>
+      <p class="muted small" id="dataNote" style="margin-top:12px"></p>
+    </div>
+  </div>
+  <p class="muted small sec">Les calories sont une estimation : métabolisme de base (Mifflin-St Jeor) × intensité de l'effort (MET), selon la durée et ton ressenti d'effort, ou ton allure pour la course.</p>
+</section>
+
+</div>
+
+<nav class="tabs" aria-label="Navigation">
+  <a href="#journal" data-v="journal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>Journal</a>
+  <a href="#progres" data-v="progres"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19l5-6 4 3 7-9"/><path d="M15 7h5v5"/></svg>Progrès</a>
+  <a href="#seance" data-v="seance" class="plus" aria-label="Nouvelle séance"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></a>
+  <a href="#corps" data-v="corps"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M5 9l7-1 7 1M12 8v6M12 14l-3 7M12 14l3 7"/></svg>Corps</a>
+  <a href="#exos" data-v="exos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18"/><rect x="5" y="7" width="3" height="10" rx="1"/><rect x="16" y="7" width="3" height="10" rx="1"/></svg>Exos</a>
+</nav>
+
+<dialog id="sheet"><div class="sheet" id="sheetBody"></div></dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="js/three.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/figure.js"></script>
+<script src="js/body3d.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+<script>if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});</script>
+</body>
+</html>
