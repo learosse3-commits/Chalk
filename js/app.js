@@ -70,9 +70,10 @@ function renderJournal() {
     const d = CH.iso(CH.addDays(mon, i));
     const ss = D.sessions.filter(s => s.date === d);
     wk.push(...ss);
-    html += `<div class="day ${d === today ? 'today' : ''}"><div class="plates">${ss.length ? ss.map(s => plate(s.type)).join('') : (d <= today ? '<span class="plate none"></span>' : '')}</div><small>${J[i]} ${CH.dateOf(d).getDate()}</small></div>`;
+    html += `<div class="day ${d === today ? 'today' : ''}" ${d <= today ? `data-d="${d}" role="button" tabindex="0" aria-label="Ajouter une séance le ${CH.fmtDate(d)}"` : ''}><div class="plates">${ss.length ? ss.map(s => plate(s.type)).join('') : (d <= today ? '<span class="plate none"></span>' : '')}</div><small>${J[i]} ${CH.dateOf(d).getDate()}</small></div>`;
   }
   $('#week').innerHTML = html;
+  $$('#week [data-d]').forEach(el => el.onclick = () => newOn(el.dataset.d));
   const n = wk.length, min = wk.reduce((a, s) => a + (s.type === 'course' && s.run ? s.run.sec / 60 : s.duration || 0), 0);
   const kc = wk.reduce((a, s) => a + (kcalOf(s) || 0), 0), km = wk.reduce((a, s) => a + (s.type === 'course' && s.run ? s.run.km || 0 : 0), 0);
   $('#weekTitle').textContent = n ? (n === 1 ? '1 séance cette semaine' : n + ' séances cette semaine') : 'Cette semaine';
@@ -92,6 +93,12 @@ function renderJournal() {
   $$('#sessList .sess').forEach(b => b.onclick = () => openSession(b.dataset.s));
 }
 let JLIM = 10;
+function newOn(d) {
+  if (F.id || !F.text.trim()) { F = blankForm(); }
+  F.date = d; saveDraft();
+  location.hash = 'seance';
+  if (location.hash === '#seance') renderForm();
+}
 function streak() {
   let n = 0, w = CH.monday(new Date());
   const has = d => D.sessions.some(s => s.date >= CH.iso(d) && s.date < CH.iso(CH.addDays(d, 7)));
@@ -174,7 +181,7 @@ function renderForm() {
   if (!formBound) bindForm();
   $('#formTitle').textContent = F.id ? 'Modifier la séance' : 'Nouvelle séance';
   $$('#typeSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.t === F.type));
-  $('#fDate').value = F.date; $('#fDur').value = F.duration; $('#fText').value = F.text;
+  $('#fDate').value = F.date; $('#fDate').max = CH.today(); $('#fDur').value = F.duration; $('#fText').value = F.text;
   $('#rKm').value = F.run.km; $('#rTime').value = F.run.time; $('#rKind').value = F.run.kind; $('#rDplus').value = F.run.dplus; $('#rText').value = F.run.text;
   const run = F.type === 'course';
   $('#trainBox').hidden = run; $('#runBox').hidden = !run; $('#durWrap').hidden = run;
