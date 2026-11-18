@@ -15,7 +15,8 @@ D.profile = D.profile || {}; D.customExos = D.customExos || [];
 let EX = CH.allExos(D), MAP = CH.exoMap(D);
 const refreshExos = () => { EX = CH.allExos(D); MAP = CH.exoMap(D); };
 D.sessions.forEach(s => { if (s.type !== 'course' && !s.blocks) s.blocks = CH.parse(s.text || '', EX).blocks; });
-const persist = () => { if (!CH.save(D)) toast('Sauvegarde impossible sur cet appareil'); };
+D.deleted = D.deleted || {};
+const persist = (local) => { if (!CH.save(D)) toast('Sauvegarde impossible sur cet appareil'); if (!local && window.SYNC) SYNC.soon(); };
 persist();
 
 const sorted = () => D.sessions.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.created || 0) - (a.created || 0));
@@ -155,7 +156,7 @@ function openSession(id) {
     root.querySelector('#sEdit').onclick = () => { closeSheet(); editSession(s); };
     const del = root.querySelector('#sDel');
     del.onclick = () => {
-      if (del.dataset.ok) { D.sessions = D.sessions.filter(x => x.id !== s.id); persist(); closeSheet(); toast('Séance supprimée'); route(); }
+      if (del.dataset.ok) { D.sessions = D.sessions.filter(x => x.id !== s.id); D.deleted[s.id] = Date.now(); persist(); closeSheet(); toast('Séance supprimée'); route(); }
       else { del.dataset.ok = 1; del.textContent = 'Confirmer la suppression'; del.classList.add('red'); }
     };
   });
@@ -341,6 +342,7 @@ function saveSession() {
     if (!s.duration) { toast('Indique la durée de la séance'); $('#fDur').focus(); return; }
   }
   if (D.demo) { D.sessions = D.sessions.filter(x => !x.demo); D.demo = false; }
+  s.updated = Date.now();
   if (F.id) { const i = D.sessions.findIndex(x => x.id === F.id); s.id = F.id; s.created = (D.sessions[i] || {}).created; if (i >= 0) D.sessions[i] = s; else D.sessions.push(s); }
   else { s.id = CH.uid(); s.created = Date.now(); D.sessions.push(s); }
   persist();
@@ -380,7 +382,7 @@ function exoForm(pre, done) {
       const name = root.querySelector('#xName').value.trim();
       if (!name) { toast('Donne un nom'); return; }
       if (!Object.keys(st.m).length) { toast('Choisis au moins un muscle'); return; }
-      const ex = { id: st.id || 'c_' + CH.uid(), name, cat: root.querySelector('#xCat').value, m: st.m, aliases: root.querySelector('#xAl').value.split(',').map(x => x.trim()).filter(Boolean) };
+      const ex = { updated: Date.now(), id: st.id || 'c_' + CH.uid(), name, cat: root.querySelector('#xCat').value, m: st.m, aliases: root.querySelector('#xAl').value.split(',').map(x => x.trim()).filter(Boolean) };
       const i = D.customExos.findIndex(x => x.id === ex.id);
       if (i >= 0) D.customExos[i] = ex; else D.customExos.push(ex);
       persist(); refreshExos(); closeSheet(); toast('Exercice ajouté à ta base');
@@ -390,7 +392,7 @@ function exoForm(pre, done) {
     const del = root.querySelector('#xDel');
     if (del) del.onclick = () => {
       if (!del.dataset.ok) { del.dataset.ok = 1; del.textContent = 'Confirmer'; del.classList.add('red'); return; }
-      D.customExos = D.customExos.filter(x => x.id !== st.id); persist(); refreshExos(); closeSheet(); if (done) done();
+      D.customExos = D.customExos.filter(x => x.id !== st.id); D.deleted[st.id] = Date.now(); persist(); refreshExos(); closeSheet(); if (done) done();
     };
   });
 }
@@ -631,10 +633,10 @@ function showExoBody(e) {
 }
 
 // ---------- profil ----------
-function renderProfil() {
+let renderProfil = function () {
   const p = D.profile;
-  $$('#sexSeg button').forEach(b => { b.setAttribute('aria-pressed', b.dataset.s === p.sex); b.onclick = () => { p.sex = b.dataset.s; persist(); renderProfil(); }; });
-  [['pAge', 'age'], ['pWeight', 'weight'], ['pHeight', 'height']].forEach(([id, k]) => { const i = $('#' + id); i.value = p[k] || ''; i.oninput = () => { p[k] = parseFloat(i.value) || null; persist(); bmrNote(); }; });
+  $$('#sexSeg button').forEach(b => { b.setAttribute('aria-pressed', b.dataset.s === p.sex); b.onclick = () => { p.sex = b.dataset.s; D.profileAt = Date.now(); persist(); renderProfil(); }; });
+  [['pAge', 'age'], ['pWeight', 'weight'], ['pHeight', 'height']].forEach(([id, k]) => { const i = $('#' + id); i.value = p[k] || ''; i.oninput = () => { p[k] = parseFloat(i.value) || null; D.profileAt = Date.now(); persist(); bmrNote(); }; });
   bmrNote();
   $('#dataNote').textContent = `${D.sessions.filter(s => !s.demo).length} séances enregistrées, ${D.customExos.length} exercice${D.customExos.length > 1 ? 's' : ''} perso.`;
   $('#expBtn').onclick = () => {
@@ -651,7 +653,7 @@ function renderProfil() {
         const d = JSON.parse(r.result);
         if (!d || !Array.isArray(d.sessions)) throw 0;
         openSheet(`<div class="grab"><h2 style="margin:0">Importer ?</h2>${closeBtn}</div><p>Ce fichier contient ${d.sessions.length} séances. Il remplace les données actuelles de l'appli.</p><div class="row sec"><button class="btn red" id="impOk">Remplacer</button><button class="btn ghost" data-close>Annuler</button></div>`, root => {
-          root.querySelector('#impOk').onclick = () => { D = d; D.profile = D.profile || {}; D.customExos = D.customExos || []; refreshExos(); persist(); closeSheet(); toast('Données importées'); renderProfil(); };
+          root.querySelector('#impOk').onclick = () => { const now = Date.now(), old = D.sessions.map(x => x.id); D = d; D.profile = D.profile || {}; D.customExos = D.customExos || []; D.deleted = D.deleted || {}; D.profileAt = now; D.sessions.forEach(x => { x.updated = now; }); old.forEach(id => { if (!D.sessions.some(x => x.id === id)) D.deleted[id] = now; }); refreshExos(); persist(); closeSheet(); toast('Données importées'); renderProfil(); };
         });
       } catch (e) { toast('Fichier non reconnu'); }
       ev.target.value = '';
@@ -661,7 +663,8 @@ function renderProfil() {
   const rb = $('#resetBtn'); rb.textContent = 'Tout effacer'; rb.classList.remove('red'); delete rb.dataset.ok;
   rb.onclick = () => {
     if (!rb.dataset.ok) { rb.dataset.ok = 1; rb.textContent = 'Confirmer : tout effacer'; rb.classList.add('red'); return; }
-    D = { profile: D.profile, sessions: [], customExos: [], demo: false }; refreshExos(); persist(); toast('Données effacées'); renderProfil();
+    const del = Object.assign({}, D.deleted); D.sessions.forEach(x => { del[x.id] = Date.now(); }); D.customExos.forEach(x => { del[x.id] = Date.now(); });
+    D = { profile: D.profile, profileAt: D.profileAt, sessions: [], customExos: [], demo: false, deleted: del }; refreshExos(); persist(); toast('Données effacées'); renderProfil();
   };
 }
 function bmrNote() {
@@ -669,5 +672,112 @@ function bmrNote() {
   $('#bmrNote').textContent = b ? `Métabolisme de base estimé : ${fr(b)} kcal par jour. Exemple : 1 h de CrossFit avec un WOD de 12 min, effort 8/10 ≈ ${fr(CH.kcal({ type: 'crossfit', rpe: 8, duration: 60, blocks: [{ kind: 'amrap', minutes: 12, entries: [] }] }, D.profile))} kcal.` : 'Remplis les quatre champs pour obtenir une estimation des calories de chaque séance.';
 }
 
+// ---------- synchro téléphone / ordi via un gist GitHub privé ----------
+const SK = 'chalk.sync', FILE = 'chalk-data.json';
+const API = 'https://api.github.com';
+let SC = {}; try { SC = JSON.parse(localStorage.getItem(SK)) || {}; } catch (e) {}
+const saveSC = () => { try { localStorage.setItem(SK, JSON.stringify(SC)); } catch (e) {} };
+const gh = async (path, opt = {}) => {
+  const r = await fetch(API + path, Object.assign({}, opt, { headers: { Authorization: 'Bearer ' + SC.token, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' }, cache: 'no-store' }));
+  if (r.status === 401) throw new Error('Jeton refusé (expiré ou mal copié)');
+  if (r.status === 403 || r.status === 404) throw new Error(r.status === 404 ? 'Fichier de synchro introuvable' : 'Le jeton n\'a pas le droit « gist »');
+  if (!r.ok) throw new Error('GitHub a répondu ' + r.status);
+  return r.json();
+};
+const stamp = x => x.updated || x.created || 0;
+function merge(a, b) {
+  const deleted = Object.assign({}, a.deleted || {});
+  for (const k in (b.deleted || {})) deleted[k] = Math.max(deleted[k] || 0, b.deleted[k]);
+  const pick = (la, lb) => {
+    const m = {};
+    [...(la || []), ...(lb || [])].forEach(x => { if (!x || x.demo) return; if (!m[x.id] || stamp(x) > stamp(m[x.id])) m[x.id] = x; });
+    return Object.values(m).filter(x => !(deleted[x.id] && deleted[x.id] >= stamp(x)));
+  };
+  const out = { sessions: pick(a.sessions, b.sessions), customExos: pick(a.customExos, b.customExos), deleted };
+  const pa = a.profileAt || 0, pb = b.profileAt || 0;
+  out.profile = pb > pa ? (b.profile || {}) : (a.profile || {}); out.profileAt = Math.max(pa, pb);
+  out.demo = false;
+  return out;
+}
+const portable = () => ({ v: 1, sessions: D.sessions.filter(s => !s.demo), customExos: D.customExos, profile: D.profile, profileAt: D.profileAt || 0, deleted: D.deleted });
+async function readRemote() {
+  const g = await gh('/gists/' + SC.gistId);
+  const f = g.files && g.files[FILE];
+  if (!f) throw new Error('Fichier de synchro introuvable');
+  let txt = f.content;
+  if (f.truncated) txt = await (await fetch(f.raw_url, { cache: 'no-store' })).text();
+  return JSON.parse(txt || '{}');
+}
+let syncing = false, syncT = null, again = false;
+async function syncNow(quiet) {
+  if (!SC.token || !SC.gistId) return;
+  if (syncing) { again = true; return; }
+  syncing = true; setSyncState('Synchronisation…');
+  try {
+    const remote = await readRemote();
+    const hadDemo = D.sessions.some(s => s.demo);
+    const m = merge(portable(), remote);
+    const before = JSON.stringify(portable());
+    if (hadDemo && !m.sessions.length) m.sessions = D.sessions; else if (hadDemo) D.demo = false;
+    Object.assign(D, m);
+    D.sessions.forEach(s => { if (s.type !== 'course' && !s.blocks) s.blocks = CH.parse(s.text || '', EX).blocks; });
+    refreshExos(); persist(true);
+    const mine = JSON.stringify(portable());
+    if (JSON.stringify(Object.assign({ v: 1 }, remote, { v: 1 })) !== mine) {
+      await gh('/gists/' + SC.gistId, { method: 'PATCH', body: JSON.stringify({ files: { [FILE]: { content: mine } } }) });
+    }
+    SC.last = Date.now(); saveSC();
+    setSyncState(null);
+    if (before !== mine && !quiet) { const v = location.hash.slice(1) || 'journal'; if (v !== 'seance') route(); }
+  } catch (e) {
+    setSyncState('Erreur : ' + e.message);
+  } finally {
+    syncing = false;
+    if (again) { again = false; syncNow(true); }
+  }
+}
+function setSyncState(msg) { SC.state = msg; const el = $('#syncState'); if (el) el.textContent = syncLabel(); }
+const syncLabel = () => !SC.gistId ? 'Pas encore connecté.' : SC.state ? SC.state : SC.last ? 'Synchronisé à ' + new Date(SC.last).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '.' : 'Connecté.';
+async function connect(token) {
+  SC.token = token.trim(); setSyncState('Connexion…');
+  try {
+    const list = await gh('/gists?per_page=100');
+    const found = list.find(g => g.files && g.files[FILE]);
+    if (found) SC.gistId = found.id;
+    else {
+      const g = await gh('/gists', { method: 'POST', body: JSON.stringify({ description: 'Chalk — données de suivi (synchro)', public: false, files: { [FILE]: { content: JSON.stringify(portable()) } } }) });
+      SC.gistId = g.id;
+    }
+    saveSC(); await syncNow(true); toast(found ? 'Connecté : données récupérées' : 'Connecté : synchro créée');
+  } catch (e) { SC.gistId = null; saveSC(); setSyncState('Erreur : ' + e.message); }
+  renderProfil(); route();
+}
+window.SYNC = { soon() { if (!SC.gistId) return; clearTimeout(syncT); syncT = setTimeout(() => syncNow(true), 1500); } };
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); });
+window.addEventListener('online', () => syncNow());
+const _rp = renderProfil;
+renderProfil = function () {
+  _rp();
+  const box = $('#syncBox');
+  box.innerHTML = SC.gistId
+    ? `<h3 style="margin-bottom:8px">Synchro téléphone et ordi</h3><p class="small" id="syncState">${syncLabel()}</p>
+       <p class="muted small">Tes séances se synchronisent toutes seules dès que l'appli est ouverte avec Internet.</p>
+       <div class="row" style="margin-top:12px"><button class="btn pri" id="syncGo" type="button">Synchroniser maintenant</button><button class="btn ghost" id="syncOff" type="button">Déconnecter cet appareil</button></div>`
+    : `<h3 style="margin-bottom:8px">Synchro téléphone et ordi</h3>
+       <p class="muted small">Tes données sont gardées dans un fichier privé sur ton compte GitHub. À faire une fois sur chaque appareil :</p>
+       <ol class="small" style="padding-left:20px;margin:8px 0">
+         <li>Ouvre <a href="https://github.com/settings/tokens/new?scopes=gist&description=Chalk" target="_blank" rel="noopener">cette page GitHub</a>. La case « gist » est déjà cochée.</li>
+         <li>Dans « Expiration », choisis « No expiration », puis « Generate token » en bas.</li>
+         <li>Copie le code qui commence par <b>ghp_</b> et colle-le ici.</li>
+       </ol>
+       <div class="row"><input type="text" id="syncTok" placeholder="ghp_…" autocomplete="off" autocapitalize="off" spellcheck="false" style="flex:1;min-width:12em"><button class="btn red" id="syncCo" type="button">Connecter</button></div>
+       <p class="small" id="syncState" style="margin-top:8px">${SC.state && SC.state.startsWith('Erreur') ? SC.state : ''}</p>
+       <p class="muted small">Sur ton 2e appareil, tu peux recoller le même code : l'appli retrouvera tes données.</p>`;
+  const co = $('#syncCo'); if (co) co.onclick = () => { const t = $('#syncTok').value; if (!/^(ghp_|github_pat_)/.test(t.trim())) { toast('Colle le code qui commence par ghp_'); return; } connect(t); };
+  const go = $('#syncGo'); if (go) go.onclick = () => syncNow();
+  const off = $('#syncOff'); if (off) off.onclick = () => { SC = {}; saveSC(); toast('Appareil déconnecté'); renderProfil(); };
+};
+
 route();
+syncNow();
 }
