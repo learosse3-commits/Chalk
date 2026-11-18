@@ -396,10 +396,60 @@ function exoForm(pre, done) {
 }
 
 // ---------- progrès ----------
-let PROG = 'force', PEX = null;
+let PROG = 'charges', PEX = null, CQ = '';
 function renderProg() {
   $$('#progSeg button').forEach(b => { b.setAttribute('aria-pressed', b.dataset.p === PROG); b.onclick = () => { PROG = b.dataset.p; renderProg(); }; });
-  ({ force: progForce, course: progRun, ressenti: progFeel, regul: progRegul })[PROG]($('#progBody'));
+  ({ charges: progCharges, force: progForce, course: progRun, ressenti: progFeel, regul: progRegul })[PROG]($('#progBody'));
+}
+function spark(hist) {
+  const pts = hist.filter(p => p.max);
+  if (pts.length < 2) return '';
+  const lo = Math.min(...pts.map(p => p.max)), hi = Math.max(...pts.map(p => p.max)), W = 90, H = 30;
+  const xy = pts.map((p, i) => [i / (pts.length - 1) * (W - 6) + 3, hi === lo ? H / 2 : H - 4 - (p.max - lo) / (hi - lo) * (H - 8)]);
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${xy.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join('')}" fill="none" stroke="var(--red)" stroke-width="2" stroke-linejoin="round"/><circle cx="${xy[xy.length - 1][0]}" cy="${xy[xy.length - 1][1]}" r="3" fill="var(--red)"/></svg>`;
+}
+function progCharges(el) {
+  const rows = EX.map(e => ({ e, s: CH.exoStats(D.sessions, e.id) })).filter(x => x.s && x.s.pr)
+    .sort((a, b) => b.s.last.date.localeCompare(a.s.last.date));
+  if (!rows.length) { el.innerHTML = '<div class="empty">Tes charges apparaîtront ici dès que tu auras noté un poids (ex. « Back squat 5x5 60kg »).</div>'; return; }
+  el.innerHTML = `<h2>${rows.length} exercice${rows.length > 1 ? 's' : ''} avec charge</h2>
+    <input type="search" id="cq" placeholder="Chercher un exercice" aria-label="Chercher un exercice" value="${esc(CQ)}">
+    <div class="loads sec" id="cl"></div>`;
+  const draw = () => {
+    const q = CH.norm(CQ);
+    $('#cl').innerHTML = rows.filter(x => !q || x.e.aliases.some(a => CH.norm(a).includes(q))).map(({ e, s }) => {
+      const best = e.cat === 'halt' || e.cat === 'muscu' ? Math.max(...s.hist.map(p => p.e1rm || 0)) : 0;
+      const lastE = s.last.entry;
+      return `<button type="button" class="load" data-x="${e.id}">
+        <span class="mini" data-anim="${e.anim || ''}"></span>
+        <span class="ln"><b>${esc(e.name)}</b><small>dernière fois ${CH.fmtShort(s.last.date)} · ${entryText(lastE) || '–'}</small></span>
+        ${spark(s.hist)}
+        <span class="lv"><b>${fr(s.pr.max, 1)} kg</b><small>record${best > s.pr.max ? ' · 1RM ≈ ' + fr(best, 0) : ''}</small></span>
+      </button>`;
+    }).join('') || '<p class="muted">Aucun exercice trouvé.</p>';
+    $$('#cl .mini').forEach(m => { if (CH.hasAnim(m.dataset.anim)) CH.figure(m, m.dataset.anim); else m.innerHTML = '<i></i>'; });
+    $$('#cl .load').forEach(b => b.onclick = () => openLoads(b.dataset.x));
+  };
+  $('#cq').oninput = ev => { CQ = ev.target.value; draw(); };
+  draw();
+}
+function openLoads(id) {
+  const e = MAP[id], s = CH.exoStats(D.sessions, id);
+  const lift = e.cat === 'halt' || e.cat === 'muscu';
+  const rm = Math.max(s.pr.max, ...s.hist.map(p => p.e1rm || 0));
+  const pct = [50, 60, 65, 70, 75, 80, 85, 90, 95];
+  const rnd = v => Math.round(v * 2) / 2;
+  openSheet(`<div class="grab"><div><h2 style="margin:0">${esc(e.name)}</h2><span class="muted">${s.count} séance${s.count > 1 ? 's' : ''}</span></div>${closeBtn}</div>
+    <div class="figs">${[[fr(s.pr.max, 1) + ' kg', 'record · ' + CH.fmtShort(s.pr.date)], ...(lift ? [[fr(rm, 1) + ' kg', '1RM estimé']] : []), [fr(s.last.max, 1) + ' kg', 'dernière fois']].map(f => `<div class="fig-n"><b>${f[0]}</b><span>${f[1]}</span></div>`).join('')}</div>
+    ${s.hist.filter(p => p.max).length > 1 ? '<div class="card sec"><div class="chart" id="lc" style="height:180px"></div></div>' : ''}
+    <h3 class="sec" style="margin-bottom:8px">Tous tes poids</h3>
+    <div class="scroll"><table><thead><tr><th>Date</th><th>Détail</th><th class="n">Max</th></tr></thead><tbody>
+    ${s.hist.slice().reverse().map(p => `<tr><td>${CH.fmtShort(p.date)}</td><td>${entryText(p.entry)}</td><td class="n">${p.max ? fr(p.max, 1) + ' kg' : '–'}${p.max === s.pr.max ? ' <span class="up">record</span>' : ''}</td></tr>`).join('')}</tbody></table></div>
+    ${lift ? `<h3 class="sec" style="margin-bottom:4px">Pourcentages de ton 1RM</h3><p class="muted small">Sur la base de ${fr(rm, 1)} kg, arrondi au demi-kilo.</p>
+    <div class="pcts">${pct.map(p => `<div><span>${p} %</span><b>${fr(rnd(rm * p / 100), 1)} kg</b></div>`).join('')}</div>` : ''}`, root => {
+    const c = root.querySelector('#lc');
+    if (c) CH.lineChart(c, [{ pts: s.hist.filter(p => p.max).map(p => ({ x: CH.dateOf(p.date), y: p.max })), color: 'var(--red)', area: true, name: 'kg' }], { fmt: v => fr(v, 1) });
+  });
 }
 function progForce(el) {
   const u = usage();
