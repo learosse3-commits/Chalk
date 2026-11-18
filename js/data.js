@@ -33,6 +33,7 @@ const EXOS = [
   E('pushjerk', 'Push jerk', 'halt', 'pushpress', { delts: 1, triceps: .7, quads: .5, glutes: .3 }, ['jerk', 'split jerk', 'jete', 'jerks']),
   E('bench', 'Bench press', 'muscu', 'bench', { pecs: 1, triceps: .7, delts: .5 }, ['developpe couche', 'bench', 'dc']),
   E('row', 'Rowing barre', 'muscu', 'barbellrow', { lats: .9, traps: .6, biceps: .6, lowback: .4, delts: .4 }, ['bent over row', 'rowing haltere', 'tirage buste penche', 'pendlay row']),
+  E('ringrow', 'Ring row', 'gym', 'ringrow', { lats: 1, biceps: .7, traps: .6, delts: .4, forearms: .4, abs: .3 }, ['ring rows', 'rowing anneaux', 'tirage anneaux', 'tirage aux anneaux', 'australian pull up', 'tirage horizontal', 'trx row']),
   E('pulldown', 'Tirage vertical', 'muscu', 'pullup', { lats: 1, biceps: .7, traps: .3 }, ['lat pulldown', 'tirage poitrine', 'tirage nuque']),
   E('curl', 'Curl biceps', 'muscu', 'curl', { biceps: 1, forearms: .5 }, ['curl', 'curls', 'biceps curl', 'curl haltere', 'curl barre']),
   E('hipthrust', 'Hip thrust', 'muscu', 'hipthrust', { glutes: 1, hams: .6, quads: .3 }, ['hip thrusts', 'pont fessier', 'glute bridge']),
@@ -58,7 +59,7 @@ const EXOS = [
   E('rower', 'Rameur', 'cardio', 'rower', { lats: .7, quads: .7, hams: .5, glutes: .5, biceps: .4, lowback: .3, delts: .2 }, ['row', 'rowing', 'concept2', 'rameur concept2']),
   E('bike', 'Assault bike', 'cardio', 'bike', { quads: 1, glutes: .6, hams: .5, calves: .3, delts: .3 }, ['bike', 'air bike', 'echo bike', 'velo', 'bike erg', 'airbike']),
   E('ski', 'Ski erg', 'cardio', 'ski', { lats: .9, triceps: .7, abs: .6, delts: .4, glutes: .3 }, ['skierg', 'ski']),
-  E('run', 'Run', 'cardio', 'run', { quads: .8, calves: .8, hams: .6, glutes: .6 }, ['running', 'course', 'sprint', 'sprints', 'shuttle run'])
+  E('run', 'Run', 'cardio', 'run', { quads: .8, calves: .8, hams: .6, glutes: .6 }, ['running', 'course a pied', 'shuttle run', 'footing'])
 ];
 
 const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’']/g, ' ').replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();

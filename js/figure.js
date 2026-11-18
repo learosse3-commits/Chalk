@@ -46,6 +46,7 @@ const A = {
   hipthrust: { scene: 'bench', eq: 'bar', at: 'hip', f: [P({ k: -55, tf: 45, sf: 0, uf: 30, ff: 70 }), P({ k: -82, tf: 82, sf: 0, uf: 40, ff: 80 })] },
   bench: { scene: 'flatbench', anchor: 'bench', eq: 'bar', f: [P({ k: -90, tf: 70, sf: 10, uf: 180, ff: 180 }), P({ k: -90, tf: 70, sf: 10, uf: 125, ff: 205 })] },
   barbellrow: { eq: 'bar', f: [P({ k: 62, tf: 22, sf: -10, uf: 0, ff: 0 }), P({ k: 62, tf: 22, sf: -10, uf: -62, ff: 25 })] },
+  ringrow: { scene: 'rings', f: [P({ k: -58, tf: 58, sf: 58, uf: 122, ff: 122 }), P({ k: -40, tf: 40, sf: 40, uf: 40, ff: 150 })] },
   curl: { eq: 'db', f: [P({ uf: 2, ff: 2 }), P({ uf: 8, ff: 150 })] },
   rower: { scene: 'rower', anchor: 'seat', f: [P({ k: 22, tf: 140, sf: 30, uf: 90, ff: 90 }), P({ k: -25, tf: 94, sf: 94, uf: -40, ff: 80 })] },
   bike: { scene: 'bike', anchor: 'bike', f: [P({ k: 30, tf: 70, sf: -10, tb: 20, sb: -5, uf: 55, ff: 80 }), P({ k: 30, tf: 20, sf: -5, tb: 70, sb: -10, uf: 70, ff: 95 })] },
@@ -119,6 +120,7 @@ function scene(anim, pt, tx, ty, p, t) {
   if (s === 'target') o.push(`<rect x=".72" y="${Y(2.55)}" width=".06" height="2.55" fill="${metal}" opacity=".35"/><rect x=".55" y="${Y(2.45)}" width=".17" height=".12" fill="var(--red)"/>`);
   if (s === 'wall') o.push(`<rect x="-.62" y="0" width=".05" height="2.55" fill="${metal}" opacity=".35"/>`);
   if (s === 'dip') o.push(`<line x1="-.5" y1="${Y(1.05)}" x2=".6" y2="${Y(1.05)}" stroke="${metal}" stroke-width=".035" stroke-linecap="round"/><line x1=".5" y1="${Y(1.05)}" x2=".5" y2="${Y(0)}" stroke="${metal}" stroke-width=".03"/><line x1="-.4" y1="${Y(1.05)}" x2="-.4" y2="${Y(0)}" stroke="${metal}" stroke-width=".03"/>`);
+  if (s === 'rings') { const ha = T(pt.af.ha); o.push(`<line x1="${X(ha[0])}" y1="0" x2="${X(ha[0])}" y2="${Y(ha[1] + .05)}" stroke="${metal}" stroke-width=".015"/>`, `<circle cx="${X(ha[0])}" cy="${Y(ha[1])}" r=".06" fill="none" stroke="${metal}" stroke-width=".025"/>`); }
   if (s === 'rope') o.push(`<line x1=".06" y1="0" x2=".06" y2="${Y(0)}" stroke="var(--fig-wood)" stroke-width=".04"/>`);
   if (s === 'bench') { const sh = T(pt.sh); o.push(`<rect x="${X(sh[0] - .35)}" y="${Y(.42)}" width=".42" height=".08" rx=".02" fill="${metal}"/><rect x="${X(sh[0] - .2)}" y="${Y(.34)}" width=".05" height=".34" fill="${metal}"/>`); }
   if (s === 'flatbench') o.push(`<rect x="-.75" y="${Y(.44)}" width="1.05" height=".07" rx=".02" fill="${metal}"/><rect x="-.55" y="${Y(.37)}" width=".05" height=".37" fill="${metal}"/><rect x="0" y="${Y(.37)}" width=".05" height=".37" fill="${metal}"/>`);
