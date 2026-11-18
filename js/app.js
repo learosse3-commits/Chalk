@@ -141,7 +141,7 @@ function openSession(id) {
   const k = kcalOf(s);
   const figs = s.type === 'course' && s.run
     ? [[fr(s.run.km, 2), 'km'], [CH.fmtDur(s.run.sec), 'temps'], [CH.fmtPace(CH.pace(s.run.km, s.run.sec)), 'min/km'], [k ? fr(k) : '–', 'kcal']]
-    : [[s.duration || '–', 'minutes'], [k ? fr(k) : '–', 'kcal'], [s.rpe || '–', 'effort /10']];
+    : [[s.duration || '–', 'minutes'], [k ? fr(k) : '–', (() => { const d = CH.kcalDetail(s, D.profile); return d && d.wod ? `kcal, dont ${fr(d.wod)} sur ${d.wodMin} min de WOD` : 'kcal'; })()], [s.rpe || '–', 'effort /10']];
   const blocks = s.type === 'course' ? (s.run && s.run.text ? `<p>${esc(s.run.text)}</p>` : '') :
     (s.blocks || []).map(b => { const l = blockLabel(b); return `<div class="blk"><h4>${l.t}<span>${l.extra}</span>${l.res ? `<span>${l.res}</span>` : ''}</h4>${b.entries.map(e => `<div class="ent"><span class="nm">${esc(e.name)}${e.warmup ? ' <small class="muted">échauffement</small>' : ''}</span><span class="muted small">${entryText(e)}</span></div>`).join('')}</div>`; }).join('');
   openSheet(`<div class="grab"><div><h2 style="margin:0">${TYPES[s.type][0]}</h2><span class="muted">${CH.fmtDate(s.date)}${s.run && s.run.kind ? ' · ' + s.run.kind : ''}</span></div>${closeBtn}</div>
@@ -597,7 +597,7 @@ function renderProfil() {
 }
 function bmrNote() {
   const b = CH.bmr(D.profile);
-  $('#bmrNote').textContent = b ? `Métabolisme de base estimé : ${fr(b)} kcal par jour. Une heure de CrossFit à 8/10 d'effort ≈ ${fr(CH.kcal({ type: 'crossfit', rpe: 8, duration: 60 }, D.profile))} kcal.` : 'Remplis les quatre champs pour obtenir une estimation des calories de chaque séance.';
+  $('#bmrNote').textContent = b ? `Métabolisme de base estimé : ${fr(b)} kcal par jour. Exemple : 1 h de CrossFit avec un WOD de 12 min, effort 8/10 ≈ ${fr(CH.kcal({ type: 'crossfit', rpe: 8, duration: 60, blocks: [{ kind: 'amrap', minutes: 12, entries: [] }] }, D.profile))} kcal.` : 'Remplis les quatre champs pour obtenir une estimation des calories de chaque séance.';
 }
 
 route();

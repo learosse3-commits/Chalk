@@ -19,24 +19,40 @@ CH.bmr = p => {
   if (!p || !p.weight || !p.height || !p.age || !p.sex) return null;
   return 10 * p.weight + 6.25 * p.height - 5 * p.age + (p.sex === 'F' ? -161 : 5);
 };
-CH.met = s => {
-  const rpe = s.rpe || 6;
-  if (s.type === 'course' && s.run && s.run.km && s.run.sec) {
-    const v = s.run.km * 1000 / (s.run.sec / 60); // m/min
+// Intensité (MET) : la partie WOD (AMRAP, EMOM, For time, tours) est comptée à part du reste de la séance
+// (échauffement, technique, force avec récup). Repères : ~12 kcal/min pendant un WOD pour une femme (étude ACE / Univ. Wisconsin-La Crosse).
+CH.wodMinutes = s => {
+  let m = 0;
+  (s.blocks || []).forEach(b => {
+    if (b.kind === 'strength') return;
+    if (b.kind === 'tabata') m += 4;
+    else if (b.minutes) m += b.minutes;
+    else if (b.timeSec) m += b.timeSec / 60;
+    else if (b.cap) m += b.cap;
+    else m += 12;
+  });
+  return m;
+};
+CH.kcalDetail = (s, p) => {
+  const b = CH.bmr(p);
+  if (!b) return null;
+  const perMet = b / 1440, rpe = s.rpe || 6;
+  if (s.type === 'course') {
+    if (!s.run || !s.run.km || !s.run.sec) return null;
+    const v = s.run.km * 1000 / (s.run.sec / 60);
     const grade = s.run.dplus ? s.run.dplus / (s.run.km * 1000) : 0;
     const vo2 = v < 134 ? 3.5 + 0.1 * v + 1.8 * v * grade : 3.5 + 0.2 * v + 0.9 * v * grade; // ACSM marche / course
-    return vo2 / 3.5;
+    return { total: Math.round(vo2 / 3.5 * perMet * s.run.sec / 60) };
   }
-  if (s.type === 'muscu') return 2.5 + 0.4 * rpe;
-  if (s.type === 'mixte') return 2.8 + 0.52 * rpe;
-  return 3 + 0.65 * rpe; // CrossFit
+  const dur = s.duration;
+  if (!dur) return null;
+  if (s.type === 'muscu') return { total: Math.round((2 + 0.35 * rpe) * perMet * dur) };
+  const wodMin = Math.min(dur, CH.wodMinutes(s));
+  const wod = (5 + 0.6 * rpe) * perMet * wodMin;      // RPE 9 ≈ 10,4 MET
+  const rest = (2.5 + 0.2 * rpe) * perMet * (dur - wodMin); // RPE 9 ≈ 4,3 MET
+  return { total: Math.round(wod + rest), wod: Math.round(wod), wodMin: Math.round(wodMin) };
 };
-CH.kcal = (s, p) => {
-  const b = CH.bmr(p);
-  const min = s.type === 'course' && s.run && s.run.sec ? s.run.sec / 60 : s.duration;
-  if (!b || !min) return null;
-  return Math.round(CH.met(s) * b / 1440 * min);
-};
+CH.kcal = (s, p) => { const d = CH.kcalDetail(s, p); return d ? d.total : null; };
 
 // --- Charge musculaire : "séries équivalentes" par muscle ---
 CH.entryUnits = (en, b) => {
