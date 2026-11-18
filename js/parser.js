@@ -146,6 +146,7 @@ function prep(text) {
     // fautes et abréviations courantes
     .replace(/\bpdt\b/g, 'pendant').replace(/\bfaisca\b/g, 'fais ca').replace(/\bfaitca\b/g, 'fait ca').replace(/\bnsuite\b/g, 'ensuite')
     .replace(/\bapres\s+ca\b/g, 'ensuite').replace(/\bderriere\b/g, 'ensuite').replace(/\bet\s+(?=ensuite\b)/g, '')
+    .replace(/\b(une?|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|douze|quinze|vingt)\s+(?=(?:reps?|repetitions?|series?|fois|tours?|rounds?|minutes?|min)\b)/g, (m, w) => ({ un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8, neuf: 9, dix: 10, douze: 12, quinze: 15, vingt: 20 }[w] + ' '))
     // "3-4 fois" -> 4 fois ; "8-10 reps" -> 10 reps
     .replace(/\b(\d+)~(\d+)(?=\s*(?:fois|reps?|repetitions?|series?|tours?|rounds?|kg|min))/g, (m, a, b) => String(Math.max(+a, +b)));
 }
@@ -244,15 +245,21 @@ function parse(text, exos) {
             return;
           }
           // ce qui précède le premier exercice et qui n'est que des chiffres complète l'exercice précédent
+          let same = false;
           segments(it, hits).forEach(seg => {
             const n = parseNumbers(seg.text);
-            if (seg.hit.e === 'REF') { toLast(n, seg.text); return; }
-            const e = seg.hit.e;
-            ensure(n.sets && (n.reps || n.kgs || n.at));
-            const en = { exo: e.id, name: e.name };
+            if (seg.hit.e === 'REF') { if (n.has) toLast(n, seg.text); else same = true; return; }
+            let e = seg.hit.e;
+            if (e.id === 'shoulderpress' && /\b(barre|barbell)\b/.test(line) && !/haltere|dumbbell|\bdb\b/.test(seg.text) && MAP.strictpress) e = MAP.strictpress;
+            // exercice déjà cité plus haut sans chiffres (ex. "échauffement deadlift…") : on le complète
+            let en = null;
+            if (n.has) for (const b of blocks) for (const x of b.entries) if (!en && x.exo === e.id && !x.reps && !x.sets && !x.kg && !x.sec) en = x;
+            if (en) { if (!NOTE.test(seg.text)) delete en.warmup; }
+            else { ensure(n.sets && (n.reps || n.kgs || n.at)); en = { exo: e.id, name: e.name }; cur.entries.push(en); }
+            if (same && last && last !== en) { ['sets', 'reps', 'sec'].forEach(k => { if (last[k] && !n[k]) en[k] = last[k]; }); same = false; }
             fill(en, n, e, seg.text);
             finish(en);
-            cur.entries.push(en); last = en;
+            last = en;
             if (lineHadHeader) itemsAfterHeader++;
           });
         });

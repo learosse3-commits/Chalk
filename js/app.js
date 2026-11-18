@@ -274,7 +274,7 @@ function renderPreview() {
     const l = blockLabel(b);
     html += `<div class="blk"><h4>${l.t}<span>${l.extra}</span>${l.res ? `<span>${l.res}</span>` : ''}</h4>` + b.entries.map((e, ei) => {
       const ex = MAP[e.exo], load = ex && (ex.cat === 'halt' || ex.cat === 'muscu') || e.kg;
-      return `<div class="ent"><span class="nm">${esc(e.name)}${e.dist ? ` <small class="muted">${e.dist >= 1000 ? fr(e.dist / 1000, 2) + ' km' : e.dist + ' m'}</small>` : ''}${e.cal ? ` <small class="muted">${e.cal} cal</small>` : ''}${e.sec ? ` <small class="muted">${CH.fmtDur(e.sec)}</small>` : ''}</span><span class="vals">
+      return `<div class="ent"><span class="nm"><button type="button" class="swap" data-sw="${bi}.${ei}" aria-label="Changer l'exercice"><span class="mini" data-anim="${ex && ex.anim || ''}"></span><span>${esc(e.name)}<small>changer</small></span></button>${e.dist ? ` <small class="muted">${e.dist >= 1000 ? fr(e.dist / 1000, 2) + ' km' : e.dist + ' m'}</small>` : ''}${e.cal ? ` <small class="muted">${e.cal} cal</small>` : ''}${e.sec ? ` <small class="muted">${CH.fmtDur(e.sec)}</small>` : ''}</span><span class="vals">
         ${b.kind === 'strength' ? `<input type="number" inputmode="numeric" value="${e.sets || ''}" data-b="${bi}" data-e="${ei}" data-f="sets" aria-label="Séries"><span class="u">×</span>` : ''}
         <input type="number" inputmode="numeric" value="${e.reps || ''}" data-b="${bi}" data-e="${ei}" data-f="reps" aria-label="Répétitions"><span class="u">reps</span>
         ${load ? `<input type="number" inputmode="decimal" step="0.5" value="${e.kg || ''}" data-b="${bi}" data-e="${ei}" data-f="kg" aria-label="Charge"><span class="u">kg</span>` : ''}
@@ -291,9 +291,28 @@ function renderPreview() {
     if (inp.dataset.f === 'kg') delete e.kgs;
     F.keepBlocks = true; saveDraft(); live();
   });
+  box.querySelectorAll('.mini').forEach(m => { if (CH.hasAnim(m.dataset.anim)) CH.figure(m, m.dataset.anim); else m.innerHTML = '<i></i>'; });
+  box.querySelectorAll('[data-sw]').forEach(b => b.onclick = () => { const [bi, ei] = b.dataset.sw.split('.').map(Number); pickExo(F.blocks[bi].entries[ei]); });
   box.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { const [bi, ei] = b.dataset.rm.split('.').map(Number); F.blocks[bi].entries.splice(ei, 1); if (!F.blocks[bi].entries.length) F.blocks.splice(bi, 1); saveDraft(); renderPreview(); live(); });
   box.querySelectorAll('[data-ign]').forEach(b => b.onclick = () => { const u = F.unknown[+b.dataset.ign]; F.ignored.push(u.guess); F.unknown.splice(+b.dataset.ign, 1); saveDraft(); renderPreview(); });
   box.querySelectorAll('[data-addu]').forEach(b => b.onclick = () => { const u = F.unknown[+b.dataset.addu]; exoForm({ name: u.guess.replace(/^./, c => c.toUpperCase()) }, () => { reparse(); renderPreview(); live(); }); });
+}
+function pickExo(entry) {
+  const u = usage();
+  const list = q => EX.filter(e => !q || e.aliases.some(a => CH.norm(a).includes(q)))
+    .sort((a, b) => (b.id === entry.exo) - (a.id === entry.exo) || (u[b.id] || 0) - (u[a.id] || 0) || a.name.localeCompare(b.name));
+  const items = q => list(q).map(e => `<button type="button" class="pick ${e.id === entry.exo ? 'on' : ''}" data-p="${e.id}"><span class="mini" data-anim="${e.anim || ''}"></span><span><b>${esc(e.name)}</b><small>${Object.entries(e.m || {}).sort((a, b) => b[1] - a[1]).slice(0, 2).map(x => CH.MUSCLES[x[0]]).join(', ')}</small></span></button>`).join('');
+  openSheet(`<div class="grab"><h2 style="margin:0">Quel exercice ?</h2>${closeBtn}</div>
+    <p class="muted small">Reconnu : <b>${esc(entry.name)}</b>. Touche le bon mouvement s'il ne correspond pas.</p>
+    <input type="search" id="pkQ" placeholder="Chercher" aria-label="Chercher un exercice">
+    <div class="picks" id="pkL">${items('')}</div>
+    <button type="button" class="btn sec" id="pkNew">Il n'existe pas, je l'ajoute</button>`, root => {
+    const draw = () => root.querySelectorAll('#pkL .mini').forEach(m => { if (CH.hasAnim(m.dataset.anim)) CH.figure(m, m.dataset.anim); else m.innerHTML = '<i></i>'; });
+    const bind = () => root.querySelectorAll('#pkL .pick').forEach(b => b.onclick = () => { const e = MAP[b.dataset.p]; entry.exo = e.id; entry.name = e.name; F.keepBlocks = true; saveDraft(); closeSheet(); renderPreview(); live(); });
+    draw(); bind();
+    root.querySelector('#pkQ').oninput = ev => { root.querySelector('#pkL').innerHTML = items(CH.norm(ev.target.value)); draw(); bind(); };
+    root.querySelector('#pkNew').onclick = () => exoForm({ name: entry.name }, ex => { if (ex) { entry.exo = ex.id; entry.name = ex.name; } F.keepBlocks = true; saveDraft(); renderPreview(); live(); });
+  });
 }
 function formSession() {
   const s = { type: F.type, date: F.date, duration: +F.duration || null, rpe: F.rpe, before: F.before, after: F.after };
@@ -540,7 +559,7 @@ function openExo(id) {
     <div class="chips wrap">${ms.map(([k, v]) => `<span class="chip" ${v >= .75 ? 'aria-pressed="true"' : ''}>${CH.MUSCLES[k]}<small>${v >= .75 ? 'principal' : 'secondaire'}</small></span>`).join('')}</div>
     ${st ? `<div class="figs sec">${[[st.pr ? fr(st.pr.max, 1) + ' kg' : '–', 'record'], [st.last.entry ? entryText(st.last.entry) : '–', 'dernière fois'], [st.count, 'séances']].map(f => `<div class="fig-n"><b style="font-size:${String(f[0]).length > 10 ? 20 : 30}px">${f[0]}</b><span>${f[1]}</span></div>`).join('')}</div>
     ${st.hist.length > 1 && st.pr ? '<div class="card sec"><div class="chart" id="xChart" style="height:180px"></div></div>' : ''}` : '<p class="muted sec">Pas encore fait dans tes séances.</p>'}
-    <div class="row sec"><button class="btn pri" id="xBody">Voir sur le corps</button>${e.custom ? '<button class="btn" id="xEdit">Modifier</button>' : ''}</div>`, root => {
+    <div class="row sec"><button class="btn pri" id="xBody">Voir sur le corps</button><a class="btn" style="display:inline-flex;align-items:center;text-decoration:none" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${encodeURIComponent(e.name + ' exercise technique')}">Voir une vidéo de démo</a>${e.custom ? '<button class="btn" id="xEdit">Modifier</button>' : ''}</div>`, root => {
     if (CH.hasAnim(e.anim)) sheetStop = CH.figure(root.querySelector('#xFig'), e.anim, { animate: true });
     const c = root.querySelector('#xChart');
     if (c) CH.lineChart(c, [{ pts: st.hist.filter(p => p.max).map(p => ({ x: CH.dateOf(p.date), y: p.max })), color: 'var(--red)', area: true, name: 'kg' }], { fmt: v => fr(v, 1) });

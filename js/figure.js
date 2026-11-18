@@ -27,6 +27,7 @@ const A = {
   hangclean: { eq: 'bar', f: [P({ k: 35, tf: 25, sf: -10, uf: 0, ff: 0 }), P({ k: -8, tf: -5, sf: -10, uf: 10, ff: 10, lift: .06 }), P(Object.assign({}, HALF, RACK, { k: 12 })), P(RACK)] },
   snatch: { eq: 'bar', f: [P(Object.assign({}, FLOOR, { k: 58 })), P({ k: -10, tf: -5, sf: -10, uf: 15, ff: 15, lift: .06 }), P(Object.assign({}, SQ, { k: 22, uf: 168, ff: 170 })), P(OVER)] },
   dbsnatch: { eq: 'db', f: [P({ k: 60, tf: 55, sf: -15, uf: 0, ff: 0, ub: 30, fb: 40 }), P({ k: -5, uf: 120, ff: 150, ub: 10, fb: 20, lift: .04 }), P({ uf: 176, ff: 178, ub: 5, fb: 10 })] },
+  dbpress: { eq: 'db', f: [P({ uf: 55, ff: 175 }), P(OVER)] },
   press: { eq: 'bar', f: [P(RACK), P(OVER)] },
   pushpress: { eq: 'bar', f: [P(RACK), P(Object.assign({}, HALF, RACK, { k: 4, tf: 30, sf: -25 })), P(Object.assign({ lift: .03 }, OVER))] },
   thruster: { eq: 'bar', f: [P(Object.assign({}, SQ, RACK, { k: 20 })), P(Object.assign({}, OVER))] },
